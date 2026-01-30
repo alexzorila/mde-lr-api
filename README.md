@@ -2,6 +2,7 @@
 Powershell script enabling Microsoft Defender Live Response use against multiple machines via API.
 * Adds functionality where a script from MDE Live Response library can be executed against a list of Device IDs.
 * Commands are called via API with authentication via Connect-AzAccount.
+* You can use the "run" and "result" commands multiple times to retry failed calls.
 
 ## Setup
 ```
