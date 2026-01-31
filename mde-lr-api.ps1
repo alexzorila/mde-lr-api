@@ -6,7 +6,7 @@ param(
     # RUN parameters (you can pass or be prompted)
     [string]$MachineListPath = 'machines.txt',
     [string]$ScriptName = 'ps1',
-    [string]$Args       = '#',
+    [string]$Args       = '',
     [string]$Reason     = 'live response via api',
 
     # Logs
@@ -117,24 +117,23 @@ function Show-Help {
 @"
 
 USAGE
-  $n run     [-MachineListPath <path>] [-ScriptName <string>] [-Args <string>] [-Reason <text>] [-ThrottleSeconds <N>] [-Ephemeral]
-  $n result  [-ActionLogPath <path>] [-ResultsLogPath <path>] [-ThrottleSeconds <N>] [-Ephemeral]
-  
+  mde-lr-api.ps1 run     [-MachineListPath <path>] [-ScriptName <string>] [-Args <string>] [-Reason <text>] [-ThrottleSeconds <N>] [-Ephemeral]
+  mde-lr-api.ps1 result  [-ActionLogPath <path>] [-ResultsLogPath <path>] [-ThrottleSeconds <N>] [-Ephemeral]
+
 EXAMPLES
-  1) Run live response command (interactive):    
-     $n run
-  
-  2) Retrieve command output:      
-     $n result
-  
+  1) Run live response command (interactive):
+     mde-lr-api.ps1 run
+
+  2) Retrieve command output:
+     mde-lr-api.ps1 result
+
   3) Run live response command (non-interactive):
-     $n run -MachineListPath .\machines.txt -ScriptName ps1 -Args "whoami" -Reason "test" -ThrottleSeconds 2
+     mde-lr-api.ps1 run -MachineListPath .\machines.txt -ScriptName test.ps1
 
 NOTES
   - You can use the "run" and "result" commands multiple times to refresh failed calls.
   - Ephemeral arg forces a fresh auth (no persistence), then cleans up context after the command completes.
-
-
+  
 "@ | Write-Host
 }
 
@@ -194,20 +193,26 @@ function Submit-LiveResponse {
 
     $headers = @{ Authorization = "Bearer $Token"; "Content-Type" = "application/json" }
     $apiUrl  = "https://api.securitycenter.microsoft.com/api/machines/$MachineId/runLiveResponse"
+
+    # Build params: always include ScriptName; include Args only when non-empty
+    $paramsList = @(
+        @{ key = "ScriptName"; value = $ScriptName }
+    )
+    if (-not [string]::IsNullOrWhiteSpace($Args)) {
+        $paramsList += @{ key = "Args"; value = $Args.Trim() }
+    }
+
     $body = @{
         Commands = @(
             @{
                 type   = "RunScript"
-                params = @(
-                    @{ key = "ScriptName"; value = $ScriptName }
-                    @{ key = "Args";       value = $Args }
-                )
+                params = $paramsList
             }
         )
         Comment = $Reason
     }
-    $jsonBody = $body | ConvertTo-Json -Depth 6
 
+    $jsonBody = $body | ConvertTo-Json -Depth 6
     $response = Invoke-RestMethod -Uri $apiUrl -Method POST -Headers $headers -Body $jsonBody
     $response.id
 }
@@ -223,7 +228,7 @@ function Get-LiveResponseResult {
 
     # Normalize encoded ampersands (handle over-encoded download URLs)
     $dl = Invoke-RestMethod -Method GET -Uri $url -Headers $headers
-    $downloadUrl = $dl.value -replace '&amp;amp;amp;amp;amp;','&amp;amp;amp;amp;' -replace '&amp;amp;amp;amp;','&amp;amp;amp;'
+    $downloadUrl = $dl.value -replace '&amp;amp;amp;amp;amp;amp;amp;','&amp;amp;amp;amp;amp;amp;' -replace '&amp;amp;amp;amp;amp;amp;','&amp;amp;amp;amp;amp;'
 
     $blob = Invoke-RestMethod -Method GET -Uri $downloadUrl
 
@@ -433,7 +438,8 @@ function Cleanup-IfEphemeral {
 # Decide Silent vs Interactive for RUN only
 # -------------------------
 # NOTE: ActionLogPath intentionally excluded (never prompted; default or inline used)
-$runSilentRequired = @('MachineListPath','ScriptName','Args','Reason','ThrottleSeconds')
+# Silent mode requires only MachineListPath and ScriptName. Args, Reason, and ThrottleSeconds are optional and defaulted.
+$runSilentRequired = @('MachineListPath','ScriptName')
 
 # All required keys must be explicitly passed inline (present in the top-level bound set)
 function Test-IsSilentRun {
