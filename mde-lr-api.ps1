@@ -117,18 +117,18 @@ function Show-Help {
 @"
 
 USAGE
-  mde-lr-api.ps1 run     [-MachineListPath <path>] [-ScriptName <string>] [-Args <string>] [-Reason <text>] [-ThrottleSeconds <N>] [-Ephemeral]
-  mde-lr-api.ps1 result  [-ActionLogPath <path>] [-ResultsLogPath <path>] [-ThrottleSeconds <N>] [-Ephemeral]
+  $n run     [-MachineListPath <path>] [-ScriptName <string>] [-Args <string>] [-Reason <text>] [-ThrottleSeconds <N>] [-Ephemeral]
+  $n result  [-ActionLogPath <path>] [-ResultsLogPath <path>] [-ThrottleSeconds <N>] [-Ephemeral]
 
 EXAMPLES
   1) Run live response command (interactive):
-     mde-lr-api.ps1 run
+     $n run
 
   2) Retrieve command output:
-     mde-lr-api.ps1 result
+     $n result
 
   3) Run live response command (non-interactive):
-     mde-lr-api.ps1 run -MachineListPath .\machines.txt -ScriptName test.ps1
+     $n run -MachineListPath .\machines.txt -ScriptName test.ps1
 
 NOTES
   - You can use the "run" and "result" commands multiple times to refresh failed calls.
@@ -226,9 +226,15 @@ function Get-LiveResponseResult {
     $headers = @{ Authorization = "Bearer $Token"; "Content-Type" = "application/json" }
     $url = "https://api.security.microsoft.com/api/machineactions/$ActionId/GetLiveResponseResultDownloadLink(index=0)"
 
-    # Normalize encoded ampersands (handle over-encoded download URLs)
-    $dl = Invoke-RestMethod -Method GET -Uri $url -Headers $headers
-    $downloadUrl = $dl.value -replace '&amp;amp;amp;amp;amp;amp;amp;','&amp;amp;amp;amp;amp;amp;' -replace '&amp;amp;amp;amp;amp;amp;','&amp;amp;amp;amp;amp;'
+    $response = Invoke-RestMethod -Method GET -Uri $url -Headers $headers
+	
+	# HTML decode if needed
+    Add-Type -AssemblyName System.Web
+    $downloadUrl = $response.value
+    do {
+        $prev = $downloadUrl
+        $downloadUrl = [System.Web.HttpUtility]::HtmlDecode($downloadUrl)
+    } while ($downloadUrl -ne $prev)
 
     $blob = Invoke-RestMethod -Method GET -Uri $downloadUrl
 
