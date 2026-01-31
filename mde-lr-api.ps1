@@ -6,7 +6,7 @@ param(
     # RUN parameters (you can pass or be prompted)
     [string]$MachineListPath = 'machines.txt',
     [string]$ScriptName = 'ps1',
-    [string]$Args       = '',
+    [string]$Args       = '#',
     [string]$Reason     = 'live response via api',
 
     # Logs
