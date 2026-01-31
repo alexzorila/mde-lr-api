@@ -31,7 +31,7 @@ EXAMPLES
      mde-lr-api.ps1 result
 
   3) Run live response command (non-interactive):
-     mde-lr-api.ps1 run -MachineListPath .\machines.txt -ScriptName ps1 -Args "whoami" -Reason "test" -ThrottleSeconds 2
+     mde-lr-api.ps1 run -MachineListPath .\machines.txt -ScriptName test.ps1
 
 NOTES
   - You can use the "run" and "result" commands multiple times to refresh failed calls.
